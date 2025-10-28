@@ -1,0 +1,516 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+    <title>Статистика напитков</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            -webkit-text-size-adjust: 100%;
+            -webkit-tap-highlight-color: transparent;
+        }
+        
+        body {
+            background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
+            min-height: 100vh;
+            padding: 20px;
+            color: #333;
+            -webkit-overflow-scrolling: touch;
+        }
+        
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+        
+        header {
+            text-align: center;
+            margin-bottom: 30px;
+        }
+        
+        h1 {
+            font-size: 2rem;
+            color: #2c3e50;
+            margin-bottom: 10px;
+            font-weight: 700;
+        }
+        
+        .description {
+            font-size: 1rem;
+            color: #7f8c8d;
+            max-width: 600px;
+            margin: 0 auto;
+            line-height: 1.4;
+        }
+        
+        .content {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 20px;
+            justify-content: center;
+        }
+        
+        .table-container {
+            flex: 1;
+            min-width: 300px;
+            background: white;
+            border-radius: 12px;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+        }
+        
+        .table-header {
+            padding: 15px;
+            background: linear-gradient(135deg, #3498db, #2980b9);
+            color: white;
+        }
+        
+        .filters {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            margin-top: 15px;
+        }
+        
+        .filter-input {
+            padding: 12px;
+            border: none;
+            border-radius: 8px;
+            background: rgba(255, 255, 255, 0.9);
+            font-size: 16px; /* Увеличиваем для iOS */
+            -webkit-appearance: none;
+        }
+        
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            flex-grow: 1;
+        }
+        
+        thead {
+            background: #2c3e50;
+            color: white;
+        }
+        
+        th {
+            padding: 14px 10px;
+            text-align: left;
+            font-weight: 600;
+            font-size: 0.9rem;
+            cursor: pointer;
+            user-select: none;
+            position: relative;
+        }
+        
+        th:hover {
+            background: #34495e;
+        }
+        
+        th:after {
+            content: '↕';
+            position: absolute;
+            right: 8px;
+            opacity: 0.7;
+        }
+        
+        th.sorted-asc:after {
+            content: '↑';
+        }
+        
+        th.sorted-desc:after {
+            content: '↓';
+        }
+        
+        tbody tr {
+            border-bottom: 1px solid #ecf0f1;
+            transition: background-color 0.2s;
+        }
+        
+        tbody tr:hover {
+            background-color: #f8f9fa;
+        }
+        
+        tbody tr:last-child {
+            border-bottom: none;
+        }
+        
+        td {
+            padding: 12px 10px;
+            font-size: 0.9rem;
+        }
+        
+        .chart-container {
+            flex: 1;
+            min-width: 300px;
+            background: white;
+            border-radius: 12px;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+            padding: 15px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+        
+        .chart-title {
+            font-size: 1.3rem;
+            color: #2c3e50;
+            margin-bottom: 15px;
+            text-align: center;
+            font-weight: 600;
+        }
+        
+        .chart-wrapper {
+            width: 100%;
+            max-width: 400px;
+            height: 350px;
+            position: relative;
+        }
+        
+        .summary {
+            margin-top: 15px;
+            text-align: center;
+            font-size: 1rem;
+            color: #7f8c8d;
+        }
+        
+        .highlight {
+            color: #e74c3c;
+            font-weight: 600;
+        }
+        
+        /* Адаптивность для мобильных устройств */
+        @media (max-width: 768px) {
+            body {
+                padding: 15px;
+            }
+            
+            h1 {
+                font-size: 1.7rem;
+            }
+            
+            .description {
+                font-size: 0.9rem;
+            }
+            
+            .content {
+                flex-direction: column;
+                gap: 15px;
+            }
+            
+            .table-container, .chart-container {
+                min-width: 100%;
+            }
+            
+            .filters {
+                flex-direction: column;
+            }
+            
+            th, td {
+                padding: 10px 8px;
+                font-size: 0.85rem;
+            }
+            
+            .chart-wrapper {
+                height: 300px;
+            }
+        }
+        
+        /* Особые настройки для очень маленьких экранов */
+        @media (max-width: 380px) {
+            th, td {
+                padding: 8px 6px;
+                font-size: 0.8rem;
+            }
+            
+            .filter-input {
+                padding: 10px;
+                font-size: 14px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>Статистика напитков</h1>
+            <p class="description">Наглядно представлены данные о количестве и процентном соотношении различных напитков</p>
+        </header>
+        
+        <div class="content">
+            <div class="table-container">
+                <div class="table-header">
+                    <h2>Таблица данных</h2>
+                    <div class="filters">
+                        <input type="text" class="filter-input" id="filter-name" placeholder="Фильтр по названию...">
+                        <input type="text" class="filter-input" id="filter-count" placeholder="Фильтр по количеству...">
+                        <input type="text" class="filter-input" id="filter-percent" placeholder="Фильтр по %...">
+                    </div>
+                </div>
+                <table>
+                    <thead>
+                        <tr>
+                            <th data-sort="name">Название</th>
+                            <th data-sort="count">Количество</th>
+                            <th data-sort="percent">% от общего</th>
+                        </tr>
+                    </thead>
+                    <tbody id="table-body">
+                        <!-- Данные будут заполнены через JavaScript -->
+                    </tbody>
+                </table>
+            </div>
+            
+            <div class="chart-container">
+                <h2 class="chart-title">Распределение напитков</h2>
+                <div class="chart-wrapper">
+                    <canvas id="pie-chart"></canvas>
+                </div>
+                <p class="summary">Всего элементов: <span class="highlight" id="total-count">0</span></p>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Данные
+        const data = [
+            { name: "a la vole", count: 3 },
+            { name: "alianta", count: 2 },
+            { name: "altima", count: 4 },
+            { name: "arsenal", count: 2 },
+            { name: "AST", count: 28 },
+            { name: "Beluga", count: 18 },
+            { name: "Burgundy.ru", count: 1 },
+            { name: "Diletant", count: 2 },
+            { name: "Dream WIne", count: 13 },
+            { name: "Enogram", count: 27 },
+            { name: "Fort", count: 6 },
+            { name: "Garage", count: 11 },
+            { name: "HappyBottle", count: 11 },
+            { name: "Joia", count: 4 },
+            { name: "Ladoga", count: 4 },
+            { name: "LTF", count: 1 },
+            { name: "Luding", count: 19 },
+            { name: "LVMH", count: 5 },
+            { name: "MBG", count: 8 },
+            { name: "Megadon", count: 2 },
+            { name: "RAW", count: 3 },
+            { name: "Simple", count: 52 },
+            { name: "Simple Col", count: 5 },
+            { name: "SmartWine", count: 7 },
+            { name: "STN", count: 6 },
+            { name: "Vinoterra", count: 17 },
+            { name: "Wine&Only", count: 8 },
+            { name: "WineBank", count: 8 },
+            { name: "WineHall", count: 2 },
+            { name: "Амелиа", count: 2 },
+            { name: "Винта М", count: 2 },
+            { name: "Кормилица", count: 9 },
+            { name: "Меркурий", count: 5 },
+            { name: "РВК", count: 3 },
+            { name: "Собер Баш", count: 3 },
+            { name: "Швец", count: 4 }
+        ];
+
+        // Рассчитываем общее количество
+        const totalCount = data.reduce((sum, item) => sum + item.count, 0);
+        document.getElementById('total-count').textContent = totalCount;
+
+        // Добавляем проценты к данным
+        const dataWithPercent = data.map(item => ({
+            ...item,
+            percent: ((item.count / totalCount) * 100).toFixed(2)
+        }));
+
+        // Сортируем данные по количеству (по убыванию)
+        let sortedData = [...dataWithPercent].sort((a, b) => b.count - a.count);
+        
+        // Переменные для управления сортировкой и фильтрацией
+        let currentSort = { column: 'count', direction: 'desc' };
+        let filters = { name: '', count: '', percent: '' };
+
+        // Функция для отрисовки таблицы
+        function renderTable() {
+            const tableBody = document.getElementById('table-body');
+            tableBody.innerHTML = '';
+            
+            // Применяем фильтры
+            let filteredData = sortedData.filter(item => {
+                return item.name.toLowerCase().includes(filters.name.toLowerCase()) &&
+                       item.count.toString().includes(filters.count) &&
+                       item.percent.includes(filters.percent);
+            });
+            
+            // Применяем сортировку
+            filteredData.sort((a, b) => {
+                let aValue, bValue;
+                
+                if (currentSort.column === 'name') {
+                    aValue = a.name.toLowerCase();
+                    bValue = b.name.toLowerCase();
+                } else if (currentSort.column === 'count') {
+                    aValue = a.count;
+                    bValue = b.count;
+                } else {
+                    aValue = parseFloat(a.percent);
+                    bValue = parseFloat(b.percent);
+                }
+                
+                if (currentSort.direction === 'asc') {
+                    return aValue > bValue ? 1 : -1;
+                } else {
+                    return aValue < bValue ? 1 : -1;
+                }
+            });
+            
+            // Заполняем таблицу
+            filteredData.forEach(item => {
+                const row = document.createElement('tr');
+                row.innerHTML = `
+                    <td>${item.name}</td>
+                    <td>${item.count}</td>
+                    <td>${item.percent}%</td>
+                `;
+                tableBody.appendChild(row);
+            });
+            
+            // Обновляем индикаторы сортировки в заголовках
+            document.querySelectorAll('th').forEach(th => {
+                th.classList.remove('sorted-asc', 'sorted-desc');
+                if (th.dataset.sort === currentSort.column) {
+                    th.classList.add(currentSort.direction === 'asc' ? 'sorted-asc' : 'sorted-desc');
+                }
+            });
+        }
+
+        // Инициализация таблицы
+        renderTable();
+
+        // Обработчики событий для сортировки
+        document.querySelectorAll('th[data-sort]').forEach(th => {
+            th.addEventListener('click', () => {
+                const column = th.dataset.sort;
+                
+                if (currentSort.column === column) {
+                    // Меняем направление сортировки, если колонка та же
+                    currentSort.direction = currentSort.direction === 'asc' ? 'desc' : 'asc';
+                } else {
+                    // Сортируем по новой колонке (по умолчанию по убыванию)
+                    currentSort.column = column;
+                    currentSort.direction = 'desc';
+                }
+                
+                renderTable();
+            });
+        });
+
+        // Обработчики событий для фильтров
+        document.getElementById('filter-name').addEventListener('input', (e) => {
+            filters.name = e.target.value;
+            renderTable();
+        });
+        
+        document.getElementById('filter-count').addEventListener('input', (e) => {
+            filters.count = e.target.value;
+            renderTable();
+        });
+        
+        document.getElementById('filter-percent').addEventListener('input', (e) => {
+            filters.percent = e.target.value;
+            renderTable();
+        });
+
+        // Создаем круговую диаграмму
+        const ctx = document.getElementById('pie-chart').getContext('2d');
+        
+        // Генерируем цвета для диаграммы
+        const generateColors = (count) => {
+            const colors = [];
+            const hueStep = 360 / count;
+            
+            for (let i = 0; i < count; i++) {
+                const hue = i * hueStep;
+                colors.push(`hsl(${hue}, 70%, 60%)`);
+            }
+            
+            return colors;
+        };
+        
+        const colors = generateColors(data.length);
+        
+        // Сортируем данные по количеству (по убыванию) для диаграммы
+        const chartData = [...data].sort((a, b) => b.count - a.count);
+        
+        // Создаем диаграмму
+        new Chart(ctx, {
+            type: 'pie',
+            data: {
+                labels: chartData.map(item => item.name),
+                datasets: [{
+                    data: chartData.map(item => item.count),
+                    backgroundColor: colors,
+                    borderColor: 'white',
+                    borderWidth: 2
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: {
+                        position: 'right',
+                        labels: {
+                            boxWidth: 15,
+                            font: {
+                                size: 11
+                            },
+                            generateLabels: function(chart) {
+                                const data = chart.data;
+                                if (data.labels.length && data.datasets.length) {
+                                    return data.labels.map((label, i) => {
+                                        const value = data.datasets[0].data[i];
+                                        const percentage = ((value / totalCount) * 100).toFixed(1);
+                                        
+                                        return {
+                                            text: `${label}: ${value} (${percentage}%)`,
+                                            fillStyle: data.datasets[0].backgroundColor[i],
+                                            strokeStyle: data.datasets[0].borderColor,
+                                            lineWidth: data.datasets[0].borderWidth,
+                                            hidden: false,
+                                            index: i
+                                        };
+                                    });
+                                }
+                                return [];
+                            }
+                        }
+                    },
+                    tooltip: {
+                        callbacks: {
+                            label: function(context) {
+                                const label = context.label || '';
+                                const value = context.raw || 0;
+                                const percentage = ((value / totalCount) * 100).toFixed(2);
+                                return `${label}: ${value} (${percentage}%)`;
+                            }
+                        }
+                    }
+                }
+            }
+        });
+        
+        // Добавляем обработчик для перерисовки диаграммы при изменении ориентации
+        window.addEventListener('orientationchange', function() {
+            setTimeout(function() {
+                window.dispatchEvent(new Event('resize'));
+            }, 300);
+        });
+    </script>
+</body>
+</html>
